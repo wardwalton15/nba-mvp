@@ -8,7 +8,7 @@ This project transforms exploratory data analysis into a production ML system th
 - Scrapes 40+ years of NBA statistics from Basketball Reference
 - Trains a Gradient Boosting model to predict MVP voting share
 - Provides an interactive dashboard showing Top 5 MVP candidates
-- Achieves <0.003 MSE on historical MVP predictions
+
 
 **Live Dashboard:** [Coming Soon - Deploy to Streamlit Cloud]
 
@@ -105,45 +105,6 @@ max_depth = 3
 random_state = 15
 ```
 
-## 💡 Usage Examples
-
-### Scrape Data
-```python
-from src.data.scraper import BasketballReferenceScraper
-
-scraper = BasketballReferenceScraper()
-data = scraper.scrape_all_data(start_year=1981, end_year=2024)
-```
-
-### Preprocess Data
-```python
-from src.data.preprocessor import MVPDataPreprocessor
-
-preprocessor = MVPDataPreprocessor()
-processed_data = preprocessor.process_all(data, min_games_pct=0.5)
-```
-
-### Train Model
-```python
-from src.models.trainer import MVPModelTrainer
-
-trainer = MVPModelTrainer()
-metrics = trainer.train_and_save(processed_data)
-```
-
-### Generate Predictions
-```python
-from src.models.predictor import MVPPredictor
-
-predictor = MVPPredictor()
-predictions = predictor.predict_current_season(current_season_data)
-print(predictions.head())
-```
-
-## 📈 Dashboard Screenshots
-
-[Add screenshots after deployment]
-
 ## 🔧 Configuration
 
 Modify `config/config.yaml` to customize:
@@ -196,7 +157,7 @@ All data is scraped from [Basketball Reference](https://www.basketball-reference
 4. Set main file path: `src/dashboard/app.py`
 5. Deploy!
 
-Your app will be available at: `https://[your-app-name].streamlit.app`
+The app will be available at: `https://[your-app-name].streamlit.app`
 
 ### Local Deployment
 
@@ -236,10 +197,6 @@ This project evolved from a Jupyter notebook exploratory analysis into a product
 - [ ] Historical accuracy tracking (predicted vs actual MVP)
 - [ ] Confidence intervals for predictions
 - [ ] Player comparison tool
-- [ ] API endpoint (FastAPI) for programmatic access
-- [ ] Unit tests with pytest (>70% coverage)
-- [ ] CI/CD pipeline with GitHub Actions
-- [ ] Docker containerization
 
 ## 📄 License
 
@@ -247,9 +204,8 @@ This project is for educational and portfolio purposes.
 
 ## 👤 Author
 
-[Your Name]
-- GitHub: [@yourusername]
-- LinkedIn: [Your LinkedIn]
+[Ward Walton]
+- GitHub: [@wardwalton15]
 
 ## 🙏 Acknowledgments
 
@@ -257,6 +213,3 @@ This project is for educational and portfolio purposes.
 - Inspired by the annual NBA MVP race
 - Built as a portfolio project demonstrating production ML skills
 
----
-
-**Made with ❤️ and Python** | [View on GitHub](<your-repo-url>)
