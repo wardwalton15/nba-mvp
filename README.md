@@ -193,10 +193,8 @@ This project evolved from a Jupyter notebook exploratory analysis into a product
 
 ## 🔮 Future Enhancements
 
-- [ ] Add SHAP values for prediction explainability
 - [ ] Historical accuracy tracking (predicted vs actual MVP)
 - [ ] Confidence intervals for predictions
-- [ ] Player comparison tool
 
 ## 📄 License
 

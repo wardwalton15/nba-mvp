@@ -6,6 +6,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+from typing import Dict
 
 
 def render_player_card(player_data: pd.Series, index: int):
@@ -225,3 +226,77 @@ def render_comparison_table(predictions: pd.DataFrame):
     })
 
     st.dataframe(display_df, use_container_width=True, hide_index=True)
+
+
+def render_shap_values(shap_values: Dict[str, pd.DataFrame], top_predictions: pd.DataFrame):
+    """
+    Render SHAP value explanations for top 5 players.
+
+    Args:
+        shap_values: Dictionary mapping player names to SHAP DataFrames
+        top_predictions: DataFrame with top predictions (for ordering)
+    """
+    st.subheader("🔍 Prediction Explanations (SHAP Values)")
+    st.markdown(
+        "SHAP values show how each feature contributes to pushing the prediction "
+        "higher (positive) or lower (negative) from the baseline."
+    )
+
+    # Get top 5 players in order
+    top_5_players = top_predictions.head(5)['Player'].tolist()
+
+    # Create tabs for each player
+    tabs = st.tabs(top_5_players)
+
+    for tab, player_name in zip(tabs, top_5_players):
+        with tab:
+            if player_name not in shap_values:
+                st.warning(f"SHAP values not available for {player_name}")
+                continue
+
+            shap_df = shap_values[player_name].copy()
+
+            # Take top 8 features by absolute SHAP value
+            top_features = shap_df.head(8)
+
+            # Create waterfall-style horizontal bar chart
+            fig = go.Figure()
+
+            # Color based on positive/negative SHAP value
+            colors = ['#2ecc71' if v > 0 else '#e74c3c' for v in top_features['SHAP_Value']]
+
+            fig.add_trace(go.Bar(
+                y=top_features['Feature'],
+                x=top_features['SHAP_Value'],
+                orientation='h',
+                marker_color=colors,
+                text=[f"{v:.4f}" for v in top_features['SHAP_Value']],
+                textposition='outside',
+                hovertemplate=(
+                    "<b>%{y}</b><br>"
+                    "SHAP Value: %{x:.4f}<br>"
+                    "<extra></extra>"
+                )
+            ))
+
+            fig.update_layout(
+                xaxis_title="SHAP Value (Impact on Prediction)",
+                yaxis_title="Feature",
+                height=350,
+                showlegend=False,
+                margin=dict(l=120, r=80, t=20, b=50),
+                xaxis=dict(zeroline=True, zerolinewidth=2, zerolinecolor='gray')
+            )
+
+            # Reverse y-axis to show most important at top
+            fig.update_yaxes(autorange="reversed")
+
+            st.plotly_chart(fig, use_container_width=True)
+
+            # Show feature values table
+            with st.expander("View Feature Values"):
+                display_df = top_features[['Feature', 'Feature_Value', 'SHAP_Value']].copy()
+                display_df.columns = ['Feature', 'Value', 'SHAP Impact']
+                display_df['Value'] = display_df['Value'].apply(lambda x: f"{x:.3f}" if abs(x) < 100 else f"{x:.1f}")
+                display_df['SHAP Impact'] = display_df['SHAP Impact'].apply(lambda x: f"{x:+.4f}")
+                st.dataframe(display_df, use_container_width=True, hide_index=True)

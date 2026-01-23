@@ -23,7 +23,8 @@ from src.dashboard.components import (
     render_player_card,
     render_feature_importance_chart,
     render_top_predictions_chart,
-    render_model_metrics
+    render_model_metrics,
+    render_shap_values
 )
 
 # Setup logging
@@ -98,7 +99,7 @@ def generate_predictions(current_season_data: pd.DataFrame, top_n: int = 5):
         top_n: Number of top candidates
 
     Returns:
-        Tuple of (top_predictions, feature_importance, metadata)
+        Tuple of (top_predictions, feature_importance, metadata, shap_values)
     """
     predictor = MVPPredictor()
     return predictor.predict_with_details(current_season_data, top_n=top_n)
@@ -146,7 +147,7 @@ def main():
         # Generate predictions
         with st.spinner("Generating MVP predictions..."):
             top_n = 10 if show_all_predictions else config['dashboard']['top_n']
-            top_predictions, feature_importance, metadata = generate_predictions(
+            top_predictions, feature_importance, metadata, shap_values = generate_predictions(
                 current_season,
                 top_n=top_n
             )
@@ -175,6 +176,10 @@ def main():
                 render_feature_importance_chart(feature_importance)
             else:
                 st.info("Enable 'Show Feature Importance' in the sidebar to view feature importance.")
+
+        # SHAP Values Section
+        st.markdown("---")
+        render_shap_values(shap_values, top_predictions)
 
         # Model information
         if show_model_info:
