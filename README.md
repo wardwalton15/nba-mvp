@@ -65,7 +65,7 @@ pip install -r requirements.txt
 
 3. Train the model
 ```bash
-python -m src.models.trainer --start-year 1981 --end-year 2024
+python -m src.models.trainer --start-year 1981 --end-year 2025
 ```
 
 4. Launch the dashboard
