@@ -24,7 +24,8 @@ from src.dashboard.components import (
     render_feature_importance_chart,
     render_top_predictions_chart,
     render_model_metrics,
-    render_shap_values
+    render_shap_values,
+    render_honorable_mention_card
 )
 
 # Setup logging
@@ -105,6 +106,51 @@ def generate_predictions(current_season_data: pd.DataFrame, top_n: int = 5):
     return predictor.predict_with_details(current_season_data, top_n=top_n)
 
 
+@st.cache_data(ttl=3600)
+def load_bubble_candidates(year: int, min_games_pct_current: float, min_minutes: float,
+                           eligible_players: tuple):
+    """
+    Load players who missed the games played threshold but are having strong seasons.
+
+    Args:
+        year: Season year
+        min_games_pct_current: The strict threshold they missed
+        min_minutes: Minimum minutes per game
+        eligible_players: Tuple of player names who already qualified (for exclusion)
+
+    Returns:
+        DataFrame of bubble candidates with predictions, sorted by predicted share
+    """
+    logger.info("Loading bubble candidates")
+
+    scraper = BasketballReferenceScraper()
+    raw_data = scraper.scrape_all_data(year, year)
+
+    preprocessor = MVPDataPreprocessor()
+    all_players = preprocessor.process_all(
+        raw_data,
+        min_games_pct=0.0,
+        min_minutes=min_minutes
+    )
+
+    current = all_players[all_players['Year'] == year]
+
+    # Keep only players who didn't make the eligible set and have played at least 30% of games
+    bubble = current[
+        ~current['Player'].isin(eligible_players) &
+        (current['pct_of_games'] >= 0.30)
+    ]
+
+    if len(bubble) == 0:
+        return pd.DataFrame()
+
+    # Generate predictions for bubble candidates
+    predictor = MVPPredictor()
+    predictions = predictor.predict_current_season(bubble)
+
+    return predictions.head(3)
+
+
 def main():
     """Main dashboard application."""
 
@@ -159,6 +205,27 @@ def main():
         # Display player cards
         for idx, row in top_predictions.iterrows():
             render_player_card(row, idx)
+
+        # "Just Missed the Cut" section
+        st.header("👀 Just Missed the Cut")
+        st.markdown(
+            "*Players having MVP-caliber seasons who haven't met the minimum "
+            f"games played threshold ({config['data']['min_games_pct_current']:.0%} of team games)*"
+        )
+
+        eligible_players = tuple(current_season['Player'].tolist())
+        bubble_candidates = load_bubble_candidates(
+            year=config['data']['current_season'],
+            min_games_pct_current=config['data']['min_games_pct_current'],
+            min_minutes=config['data']['min_minutes_current'],
+            eligible_players=eligible_players
+        )
+
+        if len(bubble_candidates) > 0:
+            for idx, row in bubble_candidates.iterrows():
+                render_honorable_mention_card(row, config['data']['min_games_pct_current'])
+        else:
+            st.info("No notable players currently below the games threshold.")
 
         # Visualizations
         st.markdown("---")

@@ -300,3 +300,58 @@ def render_shap_values(shap_values: Dict[str, pd.DataFrame], top_predictions: pd
                 display_df['Value'] = display_df['Value'].apply(lambda x: f"{x:.3f}" if abs(x) < 100 else f"{x:.1f}")
                 display_df['SHAP Impact'] = display_df['SHAP Impact'].apply(lambda x: f"{x:+.4f}")
                 st.dataframe(display_df, use_container_width=True, hide_index=True)
+
+
+def render_honorable_mention_card(player_data: pd.Series, min_games_pct: float):
+    """
+    Render a card for a player who just missed the games played threshold.
+
+    Args:
+        player_data: Series containing player information with Predicted_Share
+        min_games_pct: The minimum games percentage threshold they missed
+    """
+    with st.container():
+        col1, col2 = st.columns([3, 1])
+
+        with col1:
+            st.markdown(f"### {player_data['Player']}")
+            st.caption(f"Team: {player_data.get('Tm', 'N/A')} | "
+                      f"Position: {player_data.get('Pos', 'N/A')} | "
+                      f"Age: {player_data.get('Age', 'N/A')}")
+
+        with col2:
+            st.metric(
+                label="Projected Vote Share",
+                value=f"{player_data['Predicted_Share']:.3f}",
+                delta=None
+            )
+
+        col1, col2, col3, col4, col5 = st.columns(5)
+
+        with col1:
+            pts = player_data.get('PTS', 0)
+            st.metric("PPG", f"{pts:.1f}" if pd.notna(pts) else "N/A")
+
+        with col2:
+            ast = player_data.get('AST', 0)
+            st.metric("APG", f"{ast:.1f}" if pd.notna(ast) else "N/A")
+
+        with col3:
+            trb = player_data.get('TRB', 0)
+            st.metric("RPG", f"{trb:.1f}" if pd.notna(trb) else "N/A")
+
+        with col4:
+            team_win_pct = player_data.get('team_win_pct', 0)
+            st.metric("Team Win %", f"{team_win_pct:.3f}" if pd.notna(team_win_pct) else "N/A")
+
+        with col5:
+            games = int(player_data.get('G', 0))
+            w = player_data.get('W', 0)
+            l = player_data.get('L', 0)
+            total = int(float(w)) + int(float(l))
+            pct = player_data.get('pct_of_games', 0)
+            required = int(total * min_games_pct)
+            st.metric("Games", f"{games}/{total} ({pct:.0%})",
+                      delta=f"Need {required} ({min_games_pct:.0%})", delta_color="off")
+
+        st.markdown("---")
