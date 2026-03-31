@@ -143,6 +143,13 @@ class MVPDataPreprocessor:
         # Remove asterisks from player names
         df['Player'] = df['Player'].str.replace('*', '', regex=False)
 
+        # Convert stat columns to numeric
+        numeric_cols = ['MP', 'FGA', '3PA', '3P%', 'eFG%', 'FTA', 'FT%',
+                        'ORB', 'TRB', 'AST', 'STL', 'BLK', 'TOV', 'PF', 'PTS']
+        for col in numeric_cols:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors='coerce')
+
         logger.info(f"Processed {len(df)} player stat records")
 
         return df
@@ -181,6 +188,10 @@ class MVPDataPreprocessor:
 
         # Select relevant columns
         df = df[['Player', 'Age', 'USG%', 'WS/48', 'OBPM', 'DBPM', 'BPM', 'Year']]
+
+        # Convert stat columns to numeric
+        for col in ['USG%', 'WS/48', 'OBPM', 'DBPM', 'BPM']:
+            df[col] = pd.to_numeric(df[col], errors='coerce')
 
         logger.info(f"Processed {len(df)} advanced stat records")
 
