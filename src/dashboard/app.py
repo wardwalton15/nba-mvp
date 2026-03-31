@@ -72,9 +72,9 @@ def load_current_season_data(year: int, min_games_pct: float, min_minutes: float
     """
     logger.info(f"Loading data for {year} season")
 
-    # Scrape data
+    # Scrape data — re-fetch from web if CSV cache is older than 24 hours
     scraper = BasketballReferenceScraper()
-    raw_data = scraper.scrape_all_data(year, year)
+    raw_data = scraper.scrape_all_data(year, year, max_age_hours=24)
 
     # Preprocess
     preprocessor = MVPDataPreprocessor()
@@ -90,7 +90,7 @@ def load_current_season_data(year: int, min_games_pct: float, min_minutes: float
     return current_season
 
 
-@st.cache_data
+@st.cache_data(ttl=3600)
 def generate_predictions(current_season_data: pd.DataFrame, top_n: int = 5):
     """
     Generate MVP predictions from current season data.
@@ -124,7 +124,7 @@ def load_bubble_candidates(year: int, min_games_pct_current: float, min_minutes:
     logger.info("Loading bubble candidates")
 
     scraper = BasketballReferenceScraper()
-    raw_data = scraper.scrape_all_data(year, year)
+    raw_data = scraper.scrape_all_data(year, year, max_age_hours=24)
 
     preprocessor = MVPDataPreprocessor()
     all_players = preprocessor.process_all(

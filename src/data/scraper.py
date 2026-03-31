@@ -10,9 +10,10 @@ import time
 import logging
 from bs4 import BeautifulSoup
 import requests
-from typing import List, Dict
+from typing import List, Dict, Optional
 import os
 from pathlib import Path
+from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +35,15 @@ class BasketballReferenceScraper:
         self.cache_dir = Path(cache_dir)
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self.delay_seconds = delay_seconds
+
+    def _is_cache_fresh(self, cache_file: Path, max_age_hours: Optional[float]) -> bool:
+        """Return True if cache file exists and is within max_age_hours (None means no expiry)."""
+        if not cache_file.exists():
+            return False
+        if max_age_hours is None:
+            return True
+        age = datetime.now() - datetime.fromtimestamp(cache_file.stat().st_mtime)
+        return age < timedelta(hours=max_age_hours)
 
     def _scrape_table(self, url: str, table_id: str = None) -> pd.DataFrame:
         """
@@ -84,12 +94,13 @@ class BasketballReferenceScraper:
             logger.error(f"Error scraping {url}: {e}")
             return pd.DataFrame()
 
-    def scrape_mvp_awards(self, years: List[int]) -> pd.DataFrame:
+    def scrape_mvp_awards(self, years: List[int], max_age_hours: Optional[float] = None) -> pd.DataFrame:
         """
         Scrape MVP awards data for given years.
 
         Args:
             years: List of years to scrape
+            max_age_hours: If set, re-scrape if cache file is older than this many hours
 
         Returns:
             DataFrame with MVP voting data
@@ -97,7 +108,7 @@ class BasketballReferenceScraper:
         cache_file = self.cache_dir / f"mvp_awards_{min(years)}_{max(years)}.csv"
 
         # Check cache
-        if cache_file.exists():
+        if self._is_cache_fresh(cache_file, max_age_hours):
             logger.info(f"Loading MVP awards from cache: {cache_file}")
             return pd.read_csv(cache_file)
 
@@ -125,12 +136,13 @@ class BasketballReferenceScraper:
 
         return final_df
 
-    def scrape_player_stats(self, years: List[int]) -> pd.DataFrame:
+    def scrape_player_stats(self, years: List[int], max_age_hours: Optional[float] = None) -> pd.DataFrame:
         """
         Scrape per-game player statistics for given years.
 
         Args:
             years: List of years to scrape
+            max_age_hours: If set, re-scrape if cache file is older than this many hours
 
         Returns:
             DataFrame with per-game player stats
@@ -138,7 +150,7 @@ class BasketballReferenceScraper:
         cache_file = self.cache_dir / f"player_stats_{min(years)}_{max(years)}.csv"
 
         # Check cache
-        if cache_file.exists():
+        if self._is_cache_fresh(cache_file, max_age_hours):
             logger.info(f"Loading player stats from cache: {cache_file}")
             return pd.read_csv(cache_file)
 
@@ -166,12 +178,13 @@ class BasketballReferenceScraper:
 
         return final_df
 
-    def scrape_advanced_stats(self, years: List[int]) -> pd.DataFrame:
+    def scrape_advanced_stats(self, years: List[int], max_age_hours: Optional[float] = None) -> pd.DataFrame:
         """
         Scrape advanced player statistics for given years.
 
         Args:
             years: List of years to scrape
+            max_age_hours: If set, re-scrape if cache file is older than this many hours
 
         Returns:
             DataFrame with advanced player stats
@@ -179,7 +192,7 @@ class BasketballReferenceScraper:
         cache_file = self.cache_dir / f"advanced_stats_{min(years)}_{max(years)}.csv"
 
         # Check cache
-        if cache_file.exists():
+        if self._is_cache_fresh(cache_file, max_age_hours):
             logger.info(f"Loading advanced stats from cache: {cache_file}")
             return pd.read_csv(cache_file)
 
@@ -207,12 +220,13 @@ class BasketballReferenceScraper:
 
         return final_df
 
-    def scrape_team_stats(self, years: List[int]) -> pd.DataFrame:
+    def scrape_team_stats(self, years: List[int], max_age_hours: Optional[float] = None) -> pd.DataFrame:
         """
         Scrape team statistics for given years.
 
         Args:
             years: List of years to scrape
+            max_age_hours: If set, re-scrape if cache file is older than this many hours
 
         Returns:
             DataFrame with team stats
@@ -220,7 +234,7 @@ class BasketballReferenceScraper:
         cache_file = self.cache_dir / f"team_stats_{min(years)}_{max(years)}.csv"
 
         # Check cache
-        if cache_file.exists():
+        if self._is_cache_fresh(cache_file, max_age_hours):
             logger.info(f"Loading team stats from cache: {cache_file}")
             return pd.read_csv(cache_file)
 
@@ -248,13 +262,15 @@ class BasketballReferenceScraper:
 
         return final_df
 
-    def scrape_all_data(self, start_year: int, end_year: int) -> Dict[str, pd.DataFrame]:
+    def scrape_all_data(self, start_year: int, end_year: int,
+                        max_age_hours: Optional[float] = None) -> Dict[str, pd.DataFrame]:
         """
         Scrape all data types for a given year range.
 
         Args:
             start_year: First year to scrape (inclusive)
             end_year: Last year to scrape (inclusive)
+            max_age_hours: If set, re-scrape if cache files are older than this many hours
 
         Returns:
             Dictionary containing all scraped data:
@@ -270,10 +286,10 @@ class BasketballReferenceScraper:
         logger.info(f"Scraping data for years {start_year}-{end_year}")
 
         data = {
-            'mvp_awards': self.scrape_mvp_awards(years),
-            'player_stats': self.scrape_player_stats(years),
-            'advanced_stats': self.scrape_advanced_stats(years),
-            'team_stats': self.scrape_team_stats(years)
+            'mvp_awards': self.scrape_mvp_awards(years, max_age_hours=max_age_hours),
+            'player_stats': self.scrape_player_stats(years, max_age_hours=max_age_hours),
+            'advanced_stats': self.scrape_advanced_stats(years, max_age_hours=max_age_hours),
+            'team_stats': self.scrape_team_stats(years, max_age_hours=max_age_hours)
         }
 
         logger.info("Data scraping complete")
