@@ -304,10 +304,12 @@ class MVPDataPreprocessor:
         )
 
         # Merge with awards (only if awards data exists)
+        # Drop Tm from awards — player_stats is authoritative and merging without it as a key
+        # would cause pandas to suffix both as Tm_x / Tm_y
         if not awards.empty:
             merged = pd.merge(
                 merged,
-                awards,
+                awards.drop(columns=['Tm'], errors='ignore'),
                 on=['Player', 'Year', 'Age'],
                 how='left'
             )
