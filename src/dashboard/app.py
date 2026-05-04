@@ -277,7 +277,7 @@ def main():
             **Model Performance:** MSE < 0.003 (very accurate)
 
             **Eligibility Criteria for Current Season:**
-            - Played in at least 79% of team games
+            - Played in at least 75.5% of team games (~62 games)
             - Averaged at least 20 minutes per game
             """)
 
