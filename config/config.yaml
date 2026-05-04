@@ -3,7 +3,7 @@ data:
   historical_end_year: 2024
   current_season: 2026
   min_games_pct_historical: 0.50
-  min_games_pct_current: 0.79
+  min_games_pct_current: 0.755
   min_minutes_current: 20.0
   scrape_delay_seconds: 3
 
