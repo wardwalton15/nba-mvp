@@ -43,7 +43,7 @@ class MVPDataPreprocessor:
         'Dallas Mavericks': 'DAL',
         'Los Angeles Clippers': 'LAC',
         'Sacramento Kings': 'SAC',
-        'Charlotte Hornets': 'CHA',
+        'Charlotte Hornets': 'CHO',  # 2015+; the 1989-2002 franchise is CHH (see process_team_stats)
         'Miami Heat': 'MIA',
         'Minnesota Timberwolves': 'MIN',
         'Orlando Magic': 'ORL',
@@ -170,9 +170,9 @@ class MVPDataPreprocessor:
         year_values = raw_df['Year'].copy() if 'Year' in raw_df.columns else None
 
         # Set headers (excluding Year since we'll add it back)
-        headers = ['Rk', 'Player', 'Age', 'Tm', 'Pos', 'G', 'MP', 'PER', 'TS%', '3PAr', 'FTr',
-                   'ORB%', 'DRB%', 'TRB%', 'AST%', 'STL%', 'BLK%', 'TOV%', 'USG%', 'null',
-                   'OWS', 'DWS', 'WS', 'WS/48', 'null2', 'OBPM', 'DBPM', 'BPM', 'VORP']
+        headers = ['Rk', 'Player', 'Age', 'Tm', 'Pos', 'G', 'GS', 'MP', 'PER', 'TS%', '3PAr',
+                   'FTr', 'ORB%', 'DRB%', 'TRB%', 'AST%', 'STL%', 'BLK%', 'TOV%', 'USG%',
+                   'OWS', 'DWS', 'WS', 'WS/48', 'OBPM', 'DBPM', 'BPM', 'VORP', 'Awards']
         df = raw_df.iloc[:, :-1].copy()  # Exclude last column (Year)
         df.columns = headers
 
@@ -187,10 +187,10 @@ class MVPDataPreprocessor:
         df = self.handle_traded_players(df)
 
         # Select relevant columns
-        df = df[['Player', 'Age', 'USG%', 'WS/48', 'OBPM', 'DBPM', 'BPM', 'Year']]
+        df = df[['Player', 'Age', 'TOV%', 'USG%', 'WS/48', 'OBPM', 'DBPM', 'BPM', 'Year']]
 
         # Convert stat columns to numeric
-        for col in ['USG%', 'WS/48', 'OBPM', 'DBPM', 'BPM']:
+        for col in ['TOV%', 'USG%', 'WS/48', 'OBPM', 'DBPM', 'BPM']:
             df[col] = pd.to_numeric(df[col], errors='coerce')
 
         logger.info(f"Processed {len(df)} advanced stat records")
@@ -242,6 +242,11 @@ class MVPDataPreprocessor:
         df = pd.merge(df, team_mapping_df, left_on='Team', right_on='Team Name', how='left')
         df = df[['Team', 'Abbreviation', 'Year', 'W', 'L', 'NRtg']]
 
+        # Basketball Reference uses CHH for the original Charlotte Hornets (through 2002)
+        # and CHO for the current franchise, so the abbreviation depends on the season
+        original_hornets = (df['Team'] == 'Charlotte Hornets') & (pd.to_numeric(df['Year'], errors='coerce') <= 2002)
+        df.loc[original_hornets, 'Abbreviation'] = 'CHH'
+
         # Convert NRtg to numeric
         df['NRtg'] = pd.to_numeric(df['NRtg'], errors='coerce')
 
@@ -252,7 +257,8 @@ class MVPDataPreprocessor:
     def handle_traded_players(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         Handle players who were traded during the season.
-        Keeps the row with the maximum games played.
+        Keeps the combined-season row (maximum games played) and assigns it the
+        team the player appeared for most, so team stats can be merged.
 
         Args:
             df: DataFrame with player data
@@ -266,10 +272,24 @@ class MVPDataPreprocessor:
         df = df.dropna(subset=['G'])
 
         # Group by player, year, age and keep row with max games
-        idx = df.groupby(['Player', 'Year', 'Age'])['G'].idxmax()
+        keys = ['Player', 'Year', 'Age']
+        idx = df.groupby(keys)['G'].idxmax()
         filtered_df = df.loc[idx]
 
-        return filtered_df.reset_index(drop=True)
+        # The combined row is labelled "2TM", "3TM", ... (formerly "TOT"), which matches no
+        # team. Replace it with the team of the longest stint; stints are listed
+        # chronologically, so reversing first breaks ties toward the most recent team.
+        is_combined = df['Tm'].astype(str).str.fullmatch(r'\d+TM|TOT')
+        primary = (
+            df[~is_combined].iloc[::-1]
+            .sort_values('G', ascending=False, kind='stable')
+            .drop_duplicates(keys)[keys + ['Tm']]
+            .rename(columns={'Tm': 'primary_tm'})
+        )
+        filtered_df = filtered_df.merge(primary, on=keys, how='left')
+        filtered_df['Tm'] = filtered_df['primary_tm'].fillna(filtered_df['Tm'])
+
+        return filtered_df.drop(columns='primary_tm').reset_index(drop=True)
 
     def merge_all_data(self, player_stats: pd.DataFrame, team_stats: pd.DataFrame,
                       advanced_stats: pd.DataFrame, awards: pd.DataFrame) -> pd.DataFrame:
@@ -343,7 +363,7 @@ class MVPDataPreprocessor:
 
         return merged
 
-    def create_features(self, df: pd.DataFrame) -> pd.DataFrame:
+    def create_features(self, df: pd.DataFrame, prior_awards: pd.DataFrame = None) -> pd.DataFrame:
         """
         Create engineered features for MVP prediction.
 
@@ -354,6 +374,8 @@ class MVPDataPreprocessor:
 
         Args:
             df: Merged DataFrame
+            prior_awards: Optional processed MVP awards covering seasons before those
+                in df, so pre_mvps counts wins that fall outside the data being processed
 
         Returns:
             DataFrame with new features
@@ -382,6 +404,13 @@ class MVPDataPreprocessor:
         df = df.sort_values(['Player', 'Year']).reset_index(drop=True)
         df['mvp_cumsum'] = df.groupby('Player')['MVP'].cumsum()
         df['pre_mvps'] = df.groupby('Player')['mvp_cumsum'].shift(fill_value=0)
+
+        # Add MVPs won before the first season in this data (e.g. when only the
+        # current season is loaded for predictions)
+        if prior_awards is not None and not prior_awards.empty and len(df) > 0:
+            earlier = pd.to_numeric(prior_awards['Year'], errors='coerce') < df['Year'].min()
+            prior_wins = prior_awards[earlier & (prior_awards['MVP'] == 1)]['Player'].value_counts()
+            df['pre_mvps'] += df['Player'].map(prior_wins).fillna(0).astype(int)
 
         logger.info("Feature engineering complete")
 
@@ -452,7 +481,8 @@ class MVPDataPreprocessor:
 
     def process_all(self, raw_data: Dict[str, pd.DataFrame],
                    min_games_pct: float = 0.5,
-                   min_minutes: float = None) -> pd.DataFrame:
+                   min_minutes: float = None,
+                   prior_awards: pd.DataFrame = None) -> pd.DataFrame:
         """
         Complete preprocessing pipeline.
 
@@ -460,6 +490,8 @@ class MVPDataPreprocessor:
             raw_data: Dictionary of raw DataFrames from scraper
             min_games_pct: Minimum percentage of games played
             min_minutes: Minimum minutes per game (optional)
+            prior_awards: Optional raw MVP awards for seasons before those in raw_data,
+                used to count each player's previous MVPs
 
         Returns:
             Fully processed DataFrame ready for modeling
@@ -476,7 +508,9 @@ class MVPDataPreprocessor:
         merged = self.merge_all_data(player_stats, team_stats, advanced_stats, awards)
 
         # Create features
-        merged = self.create_features(merged)
+        if prior_awards is not None:
+            prior_awards = self.process_mvp_awards(prior_awards)
+        merged = self.create_features(merged, prior_awards)
 
         # Filter eligible players
         filtered = self.filter_eligible_players(merged, min_games_pct, min_minutes)

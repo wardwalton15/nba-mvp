@@ -55,6 +55,61 @@ def load_config():
 
 config = load_config()
 
+# Plain-language descriptions of model features, shown in "About the Model"
+FEATURE_DESCRIPTIONS = {
+    'PTS': 'Points per game',
+    'team_win_pct': 'Team winning percentage',
+    'AST': 'Assists per game',
+    'TOV': 'Turnovers per game',
+    'NRtg': "Team net rating (point differential per 100 possessions)",
+    'FTA': 'Free throw attempts per game',
+    'WS/48': 'Win shares per 48 minutes',
+    'BPM': 'Box plus/minus',
+    'OBPM': 'Offensive box plus/minus',
+    'DBPM': 'Defensive box plus/minus',
+    'USG%': 'Usage rate',
+    'pre_mvps': 'Previous MVP awards won',
+}
+
+
+def load_prior_awards(scraper: BasketballReferenceScraper, year: int) -> pd.DataFrame:
+    """Load MVP voting for seasons before `year`, used to count each player's previous MVPs."""
+    start = config['data']['historical_start_year']
+    end = min(config['data']['historical_end_year'], year - 1)
+    return scraper.scrape_mvp_awards(list(range(start, end + 1)))
+
+
+def render_methodology(feature_importance: pd.DataFrame, metadata: dict):
+    """Render the "About the Model" text from the loaded model's own metadata."""
+    lines = [
+        "### Methodology",
+        "",
+        "This MVP predictor uses a **Gradient Boosting Regressor** trained on historical "
+        f"NBA data from {metadata.get('years_range', 'N/A')}. The model predicts each player's "
+        "MVP vote share based on their performance and team success.",
+        "",
+        "**Features (by importance):**",
+    ]
+    for _, row in feature_importance.iterrows():
+        description = FEATURE_DESCRIPTIONS.get(row['Feature'], row['Feature'])
+        lines.append(f"- **{row['Feature']}**: {description} ({row['Importance']:.1%})")
+
+    mse = metadata.get('mse')
+    min_games_pct = config['data']['min_games_pct_current']
+    lines += [
+        "",
+        "**Data Source:** Basketball Reference (basketball-reference.com)",
+        "",
+        f"**Model Performance:** test MSE {mse:.4f}" if isinstance(mse, (int, float))
+        else "**Model Performance:** N/A",
+        "",
+        "**Eligibility Criteria for Current Season:**",
+        f"- Played in at least {min_games_pct:.1%} of team games "
+        f"(~{round(82 * min_games_pct)} over a full season)",
+        f"- Averaged at least {config['data']['min_minutes_current']:.0f} minutes per game",
+    ]
+    st.markdown("\n".join(lines))
+
 
 # Data loading functions with caching
 @st.cache_data(ttl=3600)  # Cache for 1 hour
@@ -81,7 +136,8 @@ def load_current_season_data(year: int, min_games_pct: float, min_minutes: float
     processed_data = preprocessor.process_all(
         raw_data,
         min_games_pct=min_games_pct,
-        min_minutes=min_minutes
+        min_minutes=min_minutes,
+        prior_awards=load_prior_awards(scraper, year)
     )
 
     # Filter to current season
@@ -130,7 +186,8 @@ def load_bubble_candidates(year: int, min_games_pct_current: float, min_minutes:
     all_players = preprocessor.process_all(
         raw_data,
         min_games_pct=0.0,
-        min_minutes=min_minutes
+        min_minutes=min_minutes,
+        prior_awards=load_prior_awards(scraper, year)
     )
 
     current = all_players[all_players['Year'] == year]
@@ -256,30 +313,7 @@ def main():
 
         # Methodology section
         with st.expander("📖 About the Model"):
-            st.markdown("""
-            ### Methodology
-
-            This MVP predictor uses a **Gradient Boosting Regressor** trained on historical NBA data from 1981-2026.
-            The model predicts each player's MVP vote share based on their performance and team success.
-
-            **Key Features:**
-            - **Points (PTS)**: Points per game - most important feature (41.4%)
-            - **Team Win %**: Team winning percentage - second most important (36.1%)
-            - **Assists (AST)**: Assists per game
-            - **Free Throw Attempts (FTA)**: Indicates how often player gets to the line
-            - **Net Rating (NRtg)**: Team's point differential per 100 possessions
-            - **Previous MVPs**: Number of previous MVP awards won
-            - **Turnovers (TOV)**: Turnovers per game
-            - **Advanced Stats**: WS/48, OBPM, DBPM, USG%
-
-            **Data Source:** Basketball Reference (basketball-reference.com)
-
-            **Model Performance:** MSE < 0.003 (very accurate)
-
-            **Eligibility Criteria for Current Season:**
-            - Played in at least 75.5% of team games (~62 games)
-            - Averaged at least 20 minutes per game
-            """)
+            render_methodology(feature_importance, metadata)
 
         # Footer
         st.markdown("---")

@@ -132,18 +132,16 @@ class MVPPredictor:
 
         logger.info(f"Computing SHAP values for {len(player_indices)} players")
 
-        # Prepare feature matrix for all data (needed for background)
+        # Prepare feature matrix
         X_all = data[self.features].copy()
         for column in X_all.columns:
             X_all[column] = pd.to_numeric(X_all[column], errors='coerce')
         X_all = X_all.fillna(0)
 
-        # Use a sample of the data as background for SHAP
-        background_size = min(100, len(X_all))
-        background = X_all.sample(n=background_size, random_state=42)
-
-        # Create SHAP explainer
-        explainer = shap.TreeExplainer(self.model, background)
+        # Path-dependent explainer: contributions are relative to the model's average
+        # prediction over its training data and sum exactly to each prediction. (A
+        # background sample of current players fails SHAP's additivity check.)
+        explainer = shap.TreeExplainer(self.model)
 
         # Compute SHAP values for selected players
         X_selected = X_all.iloc[player_indices]
@@ -236,10 +234,17 @@ def main():
     with open('config/config.yaml', 'r', encoding='utf-8') as f:
         config = yaml.safe_load(f)
 
+    # MVP voting from earlier seasons, so previous MVPs are counted
+    prior_awards = scraper.scrape_mvp_awards(list(range(
+        config['data']['historical_start_year'],
+        min(config['data']['historical_end_year'], args.year - 1) + 1
+    )))
+
     processed_data = preprocessor.process_all(
         raw_data,
         min_games_pct=config['data']['min_games_pct_current'],
-        min_minutes=config['data']['min_minutes_current']
+        min_minutes=config['data']['min_minutes_current'],
+        prior_awards=prior_awards
     )
 
     # Filter to current season

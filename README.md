@@ -80,22 +80,26 @@ The dashboard will be available at `http://localhost:8501`
 ### Algorithm
 Gradient Boosting Regressor (scikit-learn)
 
-### Features (11 total)
+### Features (12 total)
 | Feature | Description | Importance |
 |---------|-------------|------------|
-| **PTS** | Points per game | 41.4% |
-| **team_win_pct** | Team winning percentage | 36.1% |
-| **AST** | Assists per game | 6.1% |
-| **FTA** | Free throw attempts | 6.3% |
-| **NRtg** | Team net rating | 5.7% |
-| **pre_mvps** | Previous MVP awards | 2.3% |
-| **TOV** | Turnovers per game | 2.1% |
-| Others | WS/48, OBPM, DBPM, USG% | <1% |
+| **BPM** | Box plus/minus | 56.6% |
+| **team_win_pct** | Team winning percentage | 14.9% |
+| **PTS** | Points per game | 8.0% |
+| **WS/48** | Win shares per 48 minutes | 6.4% |
+| **TOV** | Turnovers per game | 4.0% |
+| **OBPM** | Offensive box plus/minus | 3.2% |
+| **FTA** | Free throw attempts per game | 2.1% |
+| **AST** | Assists per game | 1.8% |
+| **NRtg** | Team net rating | 1.4% |
+| Others | USG%, pre_mvps (previous MVP awards), DBPM | <1% each |
 
 ### Performance
-- **MSE**: 0.002018
+- **Test MSE**: 0.001625
 - **Training Data**: 1981-2026 seasons
-- **Training Samples**: 7,000+ player-seasons
+- **Training Samples**: 11,463 player-seasons (plus 2,866 held out for testing)
+
+The dashboard's "About the Model" section reads these figures from the latest model's metadata, so it stays current after a retrain.
 
 ### Model Parameters
 ```python

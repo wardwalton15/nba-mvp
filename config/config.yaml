@@ -18,6 +18,7 @@ model:
     - WS/48
     - DBPM
     - OBPM
+    - BPM
     - pre_mvps
     - USG%
   target: Share
