@@ -217,8 +217,8 @@ def main():
 
     # Parse arguments
     parser = argparse.ArgumentParser(description='Generate NBA MVP predictions')
-    parser.add_argument('--year', type=int, default=2025,
-                       help='Season year for predictions (default: 2025)')
+    parser.add_argument('--year', type=int, default=2027,
+                       help='Season year for predictions (default: 2027)')
 
     args = parser.parse_args()
 
@@ -253,7 +253,7 @@ def main():
 
     # Generate predictions
     predictor = MVPPredictor()
-    top_predictions, feature_importance, metadata = predictor.predict_with_details(
+    top_predictions, feature_importance, metadata, _ = predictor.predict_with_details(
         current_season,
         top_n=10
     )

@@ -260,6 +260,11 @@ class MVPDataPreprocessor:
         Returns:
             DataFrame with one row per player per season
         """
+        # Drop non-player rows (e.g. the "League Average" footer), which have no games
+        # played; left in, idxmax resolves their all-NaN group to the table's first row
+        # and duplicates that player
+        df = df.dropna(subset=['G'])
+
         # Group by player, year, age and keep row with max games
         idx = df.groupby(['Player', 'Year', 'Age'])['G'].idxmax()
         filtered_df = df.loc[idx]

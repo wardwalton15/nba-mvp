@@ -16,7 +16,7 @@ This project transforms exploratory data analysis into a production ML system th
 
 - **Automated Data Pipeline**: Scrapes and caches data from Basketball Reference with rate limiting
 - **Feature Engineering**: Creates advanced features (team win%, previous MVP wins, etc.)
-- **ML Model**: Gradient Boosting Regressor trained on 1981-2024 data
+- **ML Model**: Gradient Boosting Regressor trained on 1981-2026 data
 - **Interactive Dashboard**: Real-time predictions with player stats and visualizations
 - **Model Explainability**: Feature importance charts showing what drives MVP predictions
 - **Production Architecture**: Modular design with proper separation of concerns
@@ -65,7 +65,7 @@ pip install -r requirements.txt
 
 3. Train the model
 ```bash
-python -m src.models.trainer --start-year 1981 --end-year 2025
+python -m src.models.trainer --start-year 1981 --end-year 2026
 ```
 
 4. Launch the dashboard
@@ -94,7 +94,7 @@ Gradient Boosting Regressor (scikit-learn)
 
 ### Performance
 - **MSE**: 0.002018
-- **Training Data**: 1981-2024 seasons
+- **Training Data**: 1981-2026 seasons
 - **Training Samples**: 7,000+ player-seasons
 
 ### Model Parameters
@@ -116,7 +116,7 @@ Modify `config/config.yaml` to customize:
 Example:
 ```yaml
 data:
-  current_season: 2025
+  current_season: 2027  # season ending year (2026-27)
   min_games_pct_current: 0.79
   min_minutes_current: 20.0
 
@@ -140,7 +140,7 @@ Manual testing checklist:
 ## 📊 Data Sources
 
 All data is scraped from [Basketball Reference](https://www.basketball-reference.com/):
-- MVP Awards (1981-2024)
+- MVP Awards (1981-2026)
 - Per-Game Player Statistics
 - Advanced Player Statistics
 - Team Statistics

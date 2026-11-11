@@ -155,7 +155,7 @@ def main():
     """Main dashboard application."""
 
     # Title and header
-    st.title("🏀 NBA MVP Predictor 2025-26")
+    st.title(config['dashboard']['title'])
     st.markdown("*Predicting NBA Most Valuable Player using Machine Learning*")
 
     # Sidebar
@@ -259,7 +259,7 @@ def main():
             st.markdown("""
             ### Methodology
 
-            This MVP predictor uses a **Gradient Boosting Regressor** trained on historical NBA data from 1981-2024.
+            This MVP predictor uses a **Gradient Boosting Regressor** trained on historical NBA data from 1981-2026.
             The model predicts each player's MVP vote share based on their performance and team success.
 
             **Key Features:**

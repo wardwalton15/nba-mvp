@@ -116,7 +116,9 @@ class BasketballReferenceScraper:
 
         for year in years:
             url = f"{self.BASE_URL_AWARDS}{year}.html"
-            df = self._scrape_table(url)
+            # Target the MVP table explicitly: before MVP voting is published the
+            # first table on the page is a different award (e.g. Rookie of the Year)
+            df = self._scrape_table(url, table_id='mvp')
 
             if not df.empty:
                 df['Year'] = year
@@ -306,7 +308,7 @@ if __name__ == "__main__":
 
     # Example usage
     scraper = BasketballReferenceScraper()
-    data = scraper.scrape_all_data(1981, 2024)
+    data = scraper.scrape_all_data(1981, 2026)
 
     print("\nScraping Summary:")
     for key, df in data.items():

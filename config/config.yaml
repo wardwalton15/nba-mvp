@@ -1,7 +1,7 @@
 data:
   historical_start_year: 1981
-  historical_end_year: 2024
-  current_season: 2026
+  historical_end_year: 2026
+  current_season: 2027
   min_games_pct_historical: 0.50
   min_games_pct_current: 0.755
   min_minutes_current: 20.0
@@ -30,4 +30,4 @@ model:
 dashboard:
   top_n: 5
   cache_ttl_hours: 1
-  title: "🏀 NBA MVP Predictor 2025-26"
+  title: "🏀 NBA MVP Predictor 2026-27"

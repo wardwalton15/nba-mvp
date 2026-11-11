@@ -178,8 +178,9 @@ class MVPModelTrainer:
         if not model_files:
             raise FileNotFoundError("No trained models found in {self.model_dir}")
 
-        # Get the most recent model
-        latest_model = max(model_files, key=lambda p: p.stat().st_mtime)
+        # Get the most recent model. Filenames embed the training timestamp, which
+        # (unlike file mtimes) survives a fresh git clone such as a Streamlit Cloud deploy
+        latest_model = max(model_files, key=lambda p: p.name)
 
         # Load model
         model = self.load_model(str(latest_model))
@@ -262,7 +263,7 @@ def main():
     parser = argparse.ArgumentParser(description='Train NBA MVP prediction model')
     parser.add_argument('--start-year', type=int, default=1981,
                        help='Start year for training data')
-    parser.add_argument('--end-year', type=int, default=2024,
+    parser.add_argument('--end-year', type=int, default=2026,
                        help='End year for training data')
     parser.add_argument('--test-size', type=float, default=0.2,
                        help='Test set size (default: 0.2)')
